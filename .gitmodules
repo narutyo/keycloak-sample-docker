@@ -1,0 +1,3 @@
+[submodule "submodules/keycloak-sample-api"]
+	path = submodules/keycloak-sample-api
+	url = git@github.com:narutyo/keycloak-sample-api.git

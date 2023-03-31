@@ -1,0 +1,92 @@
+version: "3.3"
+networks:
+  keycloak-sample:
+    driver: bridge
+volumes:
+  keycloak-api-mysql-volume:
+    driver: local
+  keycloak-sample-volume:
+    driver: local
+services:
+  keycloak-api-mysql:
+    container_name: keycloak-api-mysql
+    build:
+      context: ./docker/keycloak-api-mysql
+    networks:
+      - keycloak-sample
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "2"
+    restart: "no"
+    ports:
+      - 13306:3306
+    volumes:
+      - keycloak-api-mysql-volume:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci --default-authentication-plugin=mysql_native_password
+    environment:
+      TERM: linux
+      LANG: "C.UTF-8"
+      MYSQL_ROOT_PASSWORD: laravel
+      MYSQL_DATABASE: keycloal_api_sample
+      LOG_ROTATION_DAY: 7
+  keycloak-sample-api:
+    build:
+      context: ./docker/keycloak-sample-api
+    container_name: keycloak-sample-api
+    depends_on:
+      - keycloak-api-mysql
+    networks:
+      - keycloak-sample
+    ports:
+      - "1080:80"
+      - "15173:55173"
+    volumes:
+      - ./submodules/keycloak-sample-api:/var/www/keycloak-sample-api
+    environment:
+      APP_NAME: "keycloak-sample-api"
+      APP_ENV: local
+      APP_KEY: "base64:qcPfU/VDf6uuipgg/y1cI8dwGEM9BUYFoFU3qrpLEeE="
+      APP_DEBUG: "true"
+      DB_CONNECTION: mysql
+      DB_HOST: keycloak-api-mysql
+      DB_PORT: 3306
+      DB_DATABASE: keycloal_api_sample
+      DB_USERNAME: root
+      DB_PASSWORD: laravel
+  keycloak-sample-mysql:
+    container_name: keycloak-sample-mysql
+    build:
+      context: ./docker/keycloak-sample-mysql
+    networks:
+      - keycloak-sample
+    volumes:
+      - keycloak-sample-volume:/var/lib/mysql
+    ports:
+      - 13308:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: keycloak
+      MYSQL_USER: keycloak
+      MYSQL_PASSWORD: password
+  keycloak-sample:
+    image: quay.io/keycloak/keycloak:16.1.1
+    container_name: keycloak-sample
+    networks:
+      - keycloak-sample
+    depends_on:
+      - keycloak-sample-mysql
+    ports:
+      - 1085:8080
+    environment:
+      DB_VENDOR: MYSQL
+      DB_ADDR: keycloak-sample-mysql
+      DB_DATABASE: keycloak
+      DB_USER: keycloak
+      DB_PASSWORD: password
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
